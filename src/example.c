@@ -6,20 +6,17 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
-
+//=============================PASSED FUNCTIONS================================
 static uint8_t stored_hashes[100][HASH_SIZE];
 static int hash_count = 0;
-
 static Contact contacts[10];
 static int contact_count = 0;
-
 void print_hex(uint8_t* data, size_t len) {
     for (size_t i = 0; i < len; i++) {
         printf("%02x", data[i]);
     }
     printf("\n");
 }
-
 bool hash_check_and_relay(uint8_t hash[HASH_SIZE], uint8_t packet[PACKET_SIZE]) {
     for (int i = 0; i < hash_count; i++) {
         if (memcmp(stored_hashes[i], hash, HASH_SIZE) == 0) return false;
@@ -32,7 +29,6 @@ bool hash_check_and_relay(uint8_t hash[HASH_SIZE], uint8_t packet[PACKET_SIZE]) 
     print_hex(packet, PACKET_SIZE);
     return true;
 }
-
 bool get_contact_from_alias(uint8_t alias[ALIAS_SIZE], Contact* contact) {
     for (int i = 0; i < contact_count; i++) {
         if (memcmp(contacts[i].their_alias, alias, ALIAS_SIZE) == 0) {
@@ -42,12 +38,10 @@ bool get_contact_from_alias(uint8_t alias[ALIAS_SIZE], Contact* contact) {
     }
     return false;
 }
-
 void get_timestamp(uint8_t timestamp[TIMESTAMP_SIZE]) {
     uint64_t now = (uint64_t)time(NULL);
     memcpy(timestamp, &now, TIMESTAMP_SIZE);
 }
-
 uint32_t get_age(uint8_t recv_time[TIMESTAMP_SIZE], uint8_t send_time[TIMESTAMP_SIZE]) {
     uint64_t recv_ts, send_ts;
     memcpy(&recv_ts, recv_time, TIMESTAMP_SIZE);
@@ -58,7 +52,7 @@ uint32_t get_age(uint8_t recv_time[TIMESTAMP_SIZE], uint8_t send_time[TIMESTAMP_
         return UINT32_MAX;
     }
 }
-
+//=============================HELPER FUNCTIONS================================
 void add_test_contact(const char* their_alias_str, uint8_t kx_public_key[32], uint8_t sign_public_key[32], const char* my_alias_str) {
     if (contact_count < 10) {
         memset(contacts[contact_count].their_alias, 0, ALIAS_SIZE);
@@ -70,12 +64,11 @@ void add_test_contact(const char* their_alias_str, uint8_t kx_public_key[32], ui
         ++contact_count;
     }
 }
-
 void safe_alias_copy(uint8_t dest[ALIAS_SIZE], const char* src) {
     memset(dest, 0, ALIAS_SIZE);
     strncpy((char*)dest, src, ALIAS_SIZE - 1);
 }
-
+//==============================TESTS===============================
 bool test_unicast_signed(Identity* alice, Identity* bob) {
     printf("\n=== Test 1: Unicast Signed Message ===\n");
     Send send_msg = {0};
@@ -101,7 +94,6 @@ bool test_unicast_signed(Identity* alice, Identity* bob) {
     printf("Result: %s\n", pass ? "PASS" : "FAIL");
     return pass;
 }
-
 bool test_unicast_anonymous(Identity* bob) {
     printf("\n=== Test 2: Unicast Anonymous Message ===\n");
     Send anon_msg = {0};
@@ -124,7 +116,6 @@ bool test_unicast_anonymous(Identity* bob) {
     printf("Result: %s\n", pass ? "PASS" : "FAIL");
     return pass;
 }
-
 bool test_broadcast_signed(Identity* alice, Identity* bob) {
     printf("\n=== Test 3: Signed Broadcast Message ===\n");
     Send broadcast_msg = {0};
@@ -148,7 +139,6 @@ bool test_broadcast_signed(Identity* alice, Identity* bob) {
     printf("Result: %s\n", pass ? "PASS" : "FAIL");
     return pass;
 }
-
 bool test_broadcast_anonymous(Identity* bob) {
     printf("\n=== Test 4: Anonymous Broadcast Message ===\n");
     Send anon_broadcast = {0};
@@ -170,7 +160,6 @@ bool test_broadcast_anonymous(Identity* bob) {
     printf("Result: %s\n", pass ? "PASS" : "FAIL");
     return pass;
 }
-
 bool test_tampered_message(Identity* alice, Identity* bob) {
     printf("\n=== Test 5: Tampered Message ===\n");
     Send send_msg = {0};
@@ -195,7 +184,6 @@ bool test_tampered_message(Identity* alice, Identity* bob) {
     printf("Result: %s\n", pass ? "PASS" : "FAIL");
     return pass;
 }
-
 bool test_duplicate_message(Identity* alice, Identity* bob) {
     printf("\n=== Test 6: Duplicate Message ===\n");
     Send send_msg = {0};
@@ -225,7 +213,7 @@ bool test_duplicate_message(Identity* alice, Identity* bob) {
     printf("Result: %s\n", pass ? "PASS" : "FAIL");
     return pass;
 }
-
+//=============================================================
 int main() {
     Identity alice, bob;
     generate_identity(&alice);

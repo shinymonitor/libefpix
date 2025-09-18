@@ -13,7 +13,7 @@
 #define POW_NONCE_SIZE 8
 #define POW_ZEROS 2
 #define MAX_AGE 5
-//=============================================================
+//=====================HELPER PREPROCS=========================
 #define UNICAST 0
 #define SIGNED_BROADCAST 1
 #define ANON_BROADCAST 2
@@ -22,7 +22,7 @@
 #define PACKAGE_SIZE (ENCRYPT_SIZE+32+24+16)
 #define BROADCAST_MESSAGE_SIZE (PACKAGE_SIZE-TIMESTAMP_SIZE-INTERNAL_ADDRESS_SIZE-64-32)
 #define PACKET_SIZE  (HASH_SIZE+PACKAGE_SIZE+POW_NONCE_SIZE+1+1)
-//=============================================================
+//==========================TYPES===============================
 typedef struct {
     uint8_t kx_public_key[32],
     kx_secret_key[32],
@@ -51,6 +51,7 @@ typedef struct {
     internal_address[INTERNAL_ADDRESS_SIZE],
     message[MESSAGE_SIZE], broadcast_message[BROADCAST_MESSAGE_SIZE];
 } Recv;
+//====================USER VISIBLE FUNCTIONS====================
 void generate_identity(Identity* identity);
 void encode(Send send, uint8_t packet[PACKET_SIZE]);
 bool decode(uint8_t packet[PACKET_SIZE], Identity identity, Recv* recv,
@@ -58,17 +59,17 @@ bool decode(uint8_t packet[PACKET_SIZE], Identity identity, Recv* recv,
     bool (*get_contact_from_alias)(uint8_t[ALIAS_SIZE], Contact*),
     void (*get_timestamp)(uint8_t[TIMESTAMP_SIZE]),
     uint32_t (*get_age)(uint8_t[TIMESTAMP_SIZE], uint8_t[TIMESTAMP_SIZE]));
-//=============================================================
+//=============================PRNG============================
 #include <sys/syscall.h>
 #include <unistd.h>
 static inline void get_random_bytes(uint8_t* buffer, size_t len) {
     syscall(SYS_getrandom, buffer, len, 0);
 }
+//=============================================================
 static inline bool verify_pow(uint8_t hash[HASH_SIZE]){
     for (size_t i=0; i<POW_ZEROS; ++i) if (hash[i]!=0) return false;
     return true;
 }
-//=============================================================
 void generate_identity(Identity* identity) {
     uint8_t seed[32];
     get_random_bytes(seed, 32);
