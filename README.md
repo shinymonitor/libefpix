@@ -1,5 +1,5 @@
 # libefpix
-A lightweight C implementation of the EFPIX protocol, a zero-trust, encrypted flood protocol designed for privacy, resilience, and metadata protection in hostile network environments.
+A lightweight C implementation of the [EFPIX](https://github.com/shinymonitor/EFPIX) protocol, a zero-trust, encrypted flood protocol designed for privacy, resilience, and metadata protection in hostile network environments.
 
 ## Features
 - Four Packet Types: Supports unicast (signed/anonymous) and broadcast (signed/anonymous) messages.
