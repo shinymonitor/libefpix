@@ -21,7 +21,7 @@
 #define ENCRYPT_SIZE (PAYLOAD_SIZE+64)
 #define PACKAGE_SIZE (ENCRYPT_SIZE+32+24+16)
 #define BROADCAST_MESSAGE_SIZE (PACKAGE_SIZE-TIMESTAMP_SIZE-INTERNAL_ADDRESS_SIZE-64-32)
-#define PACKET_SIZE  (HASH_SIZE+PACKAGE_SIZE+POW_NONCE_SIZE+1+1)
+#define PACKET_SIZE  (PACKAGE_SIZE+POW_NONCE_SIZE+1+1)
 //==========================TYPES===============================
 typedef struct {
     uint8_t kx_public_key[32],
@@ -97,10 +97,10 @@ void encode(Send send, uint8_t packet[PACKET_SIZE]){
         get_random_bytes(nonce, 24);
         crypto_aead_lock(cipher, mac, shared_secret, nonce, NULL, 0, to_encrypt, ENCRYPT_SIZE);
         memset(packet+1, UNICAST, 1);
-        memcpy(packet+1+1+HASH_SIZE, mac, 16);
-        memcpy(packet+1+1+HASH_SIZE+16, nonce, 24);
-        memcpy(packet+1+1+HASH_SIZE+16+24, ephemeral_pk, 32);
-        memcpy(packet+1+1+HASH_SIZE+16+24+32, cipher, ENCRYPT_SIZE);
+        memcpy(packet+1+1, mac, 16);
+        memcpy(packet+1+1+16, nonce, 24);
+        memcpy(packet+1+1+16+24, ephemeral_pk, 32);
+        memcpy(packet+1+1+16+24+32, cipher, ENCRYPT_SIZE);
         crypto_wipe(ephemeral_sk, 32);
         crypto_wipe(shared_secret, 32);
         crypto_wipe(to_encrypt, ENCRYPT_SIZE);
@@ -108,17 +108,16 @@ void encode(Send send, uint8_t packet[PACKET_SIZE]){
     else {
         if (send.anonymous) memset(packet+1, ANON_BROADCAST, 1);
         else memset(packet+1, SIGNED_BROADCAST, 1);
-        if (!send.anonymous) memcpy(packet+1+1+HASH_SIZE, send.identity.sign_public_key, 32);
-        memcpy(packet+1+1+HASH_SIZE+32, send.timestamp, TIMESTAMP_SIZE);
-        memcpy(packet+1+1+HASH_SIZE+32+TIMESTAMP_SIZE, send.internal_address, INTERNAL_ADDRESS_SIZE);
-        memcpy(packet+1+1+HASH_SIZE+32+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE, send.broadcast_message, BROADCAST_MESSAGE_SIZE);
-        if (!send.anonymous) crypto_eddsa_sign(packet+1+1+HASH_SIZE+32+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE+BROADCAST_MESSAGE_SIZE, send.identity.sign_secret_key, packet+1+1+HASH_SIZE+32, BROADCAST_MESSAGE_SIZE+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE);
+        if (!send.anonymous) memcpy(packet+1+1, send.identity.sign_public_key, 32);
+        memcpy(packet+1+1+32, send.timestamp, TIMESTAMP_SIZE);
+        memcpy(packet+1+1+32+TIMESTAMP_SIZE, send.internal_address, INTERNAL_ADDRESS_SIZE);
+        memcpy(packet+1+1+32+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE, send.broadcast_message, BROADCAST_MESSAGE_SIZE);
+        if (!send.anonymous) crypto_eddsa_sign(packet+1+1+32+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE+BROADCAST_MESSAGE_SIZE, send.identity.sign_secret_key, packet+1+1+32, BROADCAST_MESSAGE_SIZE+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE);
     }
-    crypto_blake2b(packet+1+1, HASH_SIZE, packet+1+1+HASH_SIZE, PACKAGE_SIZE);
-    crypto_blake2b(pow_hash, HASH_SIZE, packet+1+1+HASH_SIZE, PACKAGE_SIZE+POW_NONCE_SIZE);
+    crypto_blake2b(pow_hash, HASH_SIZE, packet+1+1, PACKAGE_SIZE+POW_NONCE_SIZE);
     while(!verify_pow(pow_hash)){
-        get_random_bytes(packet+1+1+HASH_SIZE+PACKAGE_SIZE, POW_NONCE_SIZE);
-        crypto_blake2b(pow_hash, HASH_SIZE, packet+1+1+HASH_SIZE, PACKAGE_SIZE+POW_NONCE_SIZE);
+        get_random_bytes(packet+1+1+PACKAGE_SIZE, POW_NONCE_SIZE);
+        crypto_blake2b(pow_hash, HASH_SIZE, packet+1+1, PACKAGE_SIZE+POW_NONCE_SIZE);
     }
 }
 bool decode(uint8_t packet[PACKET_SIZE], Identity identity, Recv* recv,
@@ -128,26 +127,25 @@ bool decode(uint8_t packet[PACKET_SIZE], Identity identity, Recv* recv,
     uint32_t (*get_age)(uint8_t[TIMESTAMP_SIZE], uint8_t[TIMESTAMP_SIZE])
     ){
 
-    uint8_t hash[HASH_SIZE], pow_hash[HASH_SIZE], check_hash[HASH_SIZE];
+    uint8_t hash[HASH_SIZE], pow_hash[HASH_SIZE];
     uint8_t version, type;
     uint8_t mac[16], nonce[24], ephemeral_pk[32], shared_secret[32], cipher[ENCRYPT_SIZE], from_decrypt[ENCRYPT_SIZE];
     uint8_t their_alias[ALIAS_SIZE];
     static uint8_t anon_alias[ALIAS_SIZE]={0};
     uint8_t signature[64];
 
-    memcpy(hash, packet+1+1, HASH_SIZE);
-    crypto_blake2b(pow_hash, HASH_SIZE, packet+1+1+HASH_SIZE, PACKAGE_SIZE+POW_NONCE_SIZE);
-    crypto_blake2b(check_hash, HASH_SIZE, packet+1+1+HASH_SIZE, PACKAGE_SIZE);
-    if (!verify_pow(pow_hash) || memcmp(hash, check_hash, HASH_SIZE)!=0) return false;
+    crypto_blake2b(hash, HASH_SIZE, packet+1+1, PACKAGE_SIZE);
+    crypto_blake2b(pow_hash, HASH_SIZE, packet+1+1, PACKAGE_SIZE+POW_NONCE_SIZE);
+    if (!verify_pow(pow_hash)) return false;
     if (!hash_check_and_relay(hash, packet)) return false;
     get_timestamp(recv->recv_timestamp);
     memcpy(&version, packet, 1);
     memcpy(&type, packet+1, 1);
     if (type==UNICAST){
-        memcpy(mac, packet+1+1+HASH_SIZE, 16);
-        memcpy(nonce, packet+1+1+HASH_SIZE+16, 24);
-        memcpy(ephemeral_pk, packet+1+1+HASH_SIZE+16+24, 32);
-        memcpy(cipher, packet+1+1+HASH_SIZE+16+24+32, ENCRYPT_SIZE);
+        memcpy(mac, packet+1+1, 16);
+        memcpy(nonce, packet+1+1+16, 24);
+        memcpy(ephemeral_pk, packet+1+1+16+24, 32);
+        memcpy(cipher, packet+1+1+16+24+32, ENCRYPT_SIZE);
         crypto_x25519(shared_secret, identity.kx_secret_key, ephemeral_pk);
         if (crypto_aead_unlock(from_decrypt, mac, shared_secret, nonce, NULL, 0, cipher, ENCRYPT_SIZE)!=0) return false;
         memcpy(their_alias, from_decrypt, ALIAS_SIZE);
@@ -166,13 +164,13 @@ bool decode(uint8_t packet[PACKET_SIZE], Identity identity, Recv* recv,
     }
     else{
         recv->broadcast=true;
-        memcpy(recv->send_timestamp, packet+1+1+HASH_SIZE+32, TIMESTAMP_SIZE);
-        memcpy(recv->internal_address, packet+1+1+HASH_SIZE+32+TIMESTAMP_SIZE, INTERNAL_ADDRESS_SIZE);
-        memcpy(recv->broadcast_message, packet+1+1+HASH_SIZE+32+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE, BROADCAST_MESSAGE_SIZE);
+        memcpy(recv->send_timestamp, packet+1+1+32, TIMESTAMP_SIZE);
+        memcpy(recv->internal_address, packet+1+1+32+TIMESTAMP_SIZE, INTERNAL_ADDRESS_SIZE);
+        memcpy(recv->broadcast_message, packet+1+1+32+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE, BROADCAST_MESSAGE_SIZE);
         if(type==SIGNED_BROADCAST){
-            memcpy(recv->contact.sign_public_key, packet+1+1+HASH_SIZE, 32);
-            memcpy(signature, packet+1+1+HASH_SIZE+32+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE+MESSAGE_SIZE, 64);
-            if (!crypto_eddsa_check(signature, recv->contact.sign_public_key, packet+1+1+HASH_SIZE+32, BROADCAST_MESSAGE_SIZE+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE)) return false;
+            memcpy(recv->contact.sign_public_key, packet+1+1, 32);
+            memcpy(signature, packet+1+1+32+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE+BROADCAST_MESSAGE_SIZE, 64);
+            if (!crypto_eddsa_check(signature, recv->contact.sign_public_key, packet+1+1+32, BROADCAST_MESSAGE_SIZE+TIMESTAMP_SIZE+INTERNAL_ADDRESS_SIZE)) return false;
             recv->unknown=false;
         }
         else{recv->unknown=true;}
