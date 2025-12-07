@@ -105,7 +105,7 @@ bool test_unicast_anonymous(LIBEFPIX_Identity* bob) {
     memcpy(anon_msg.internal_address, "002", 3);
     strncpy((char*)anon_msg.message, "Anonymous message", LIBEFPIX_MESSAGE_SIZE - 1);
     uint8_t packet[LIBEFPIX_PACKET_SIZE];
-    encode(anon_msg, packet);
+    LIBEFPIX_encode(anon_msg, packet);
     LIBEFPIX_Recv recv_msg = {0};
     bool decode_result = LIBEFPIX_decode(packet, *bob, &recv_msg,
                                 hash_check_and_relay,
@@ -127,7 +127,7 @@ bool test_broadcast_signed(LIBEFPIX_Identity* alice, LIBEFPIX_Identity* bob) {
     memcpy(broadcast_msg.internal_address, "003", 3);
     strncpy((char*)broadcast_msg.broadcast_message, "Hello everyone!", LIBEFPIX_BROADCAST_MESSAGE_SIZE - 1);
     uint8_t packet[LIBEFPIX_PACKET_SIZE];
-    encode(broadcast_msg, packet);
+    LIBEFPIX_encode(broadcast_msg, packet);
     LIBEFPIX_Recv recv_msg = {0};
     bool decode_result = LIBEFPIX_decode(packet, *bob, &recv_msg,
                                 hash_check_and_relay,
@@ -149,7 +149,7 @@ bool test_broadcast_anonymous(LIBEFPIX_Identity* bob) {
     memcpy(anon_broadcast.internal_address, "004", 3);
     strncpy((char*)anon_broadcast.broadcast_message, "Anonymous broadcast", LIBEFPIX_BROADCAST_MESSAGE_SIZE - 1);
     uint8_t packet[LIBEFPIX_PACKET_SIZE];
-    encode(anon_broadcast, packet);
+    LIBEFPIX_encode(anon_broadcast, packet);
     LIBEFPIX_Recv recv_msg = {0};
     bool decode_result = LIBEFPIX_decode(packet, *bob, &recv_msg,
                                 hash_check_and_relay,
@@ -173,8 +173,8 @@ bool test_tampered_message(LIBEFPIX_Identity* alice, LIBEFPIX_Identity* bob) {
     memcpy(send_msg.internal_address, "005", 3);
     strncpy((char*)send_msg.message, "Original message", LIBEFPIX_MESSAGE_SIZE - 1);
     uint8_t packet[LIBEFPIX_PACKET_SIZE];
-    encode(send_msg, packet);
-    packet[HASH_SIZE + 100] ^= 0xFF;
+    LIBEFPIX_encode(send_msg, packet);
+    packet[LIBEFPIX_HASH_SIZE + 100] ^= 0xFF;
     LIBEFPIX_Recv recv_msg = {0};
     bool decode_result = LIBEFPIX_decode(packet, *bob, &recv_msg,
                                 hash_check_and_relay,
@@ -197,7 +197,7 @@ bool test_duplicate_message(LIBEFPIX_Identity* alice, LIBEFPIX_Identity* bob) {
     memcpy(send_msg.internal_address, "006", 3);
     strncpy((char*)send_msg.message, "Test duplicate", LIBEFPIX_MESSAGE_SIZE - 1);
     uint8_t packet[LIBEFPIX_PACKET_SIZE];
-    encode(send_msg, packet);
+    LIBEFPIX_encode(send_msg, packet);
     LIBEFPIX_Recv recv_msg1 = {0};
     bool first_result = LIBEFPIX_decode(packet, *bob, &recv_msg1,
                               hash_check_and_relay,
