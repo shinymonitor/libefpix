@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <stdbool.h>
 #include <string.h>
+#include <stdbool.h>
 #include "../lib/monocypher.h"
 #include "../lib/monocypher-ed25519.h"
 //=====================HELPER PREPROCS=========================
@@ -116,14 +116,12 @@ bool LIBEFPIX_decode(uint8_t packet[LIBEFPIX_PACKET_SIZE], LIBEFPIX_Identity ide
     void (*get_timestamp)(uint8_t[LIBEFPIX_TIMESTAMP_SIZE]),
     uint32_t (*get_age)(uint8_t[LIBEFPIX_TIMESTAMP_SIZE], uint8_t[LIBEFPIX_TIMESTAMP_SIZE])
     ){
-
     uint8_t hash[LIBEFPIX_HASH_SIZE], pow_hash[LIBEFPIX_HASH_SIZE];
     uint8_t version, type;
     uint8_t mac[16], nonce[24], ephemeral_pk[32], shared_secret[32], cipher[LIBEFPIX_ENCRYPT_SIZE], from_decrypt[LIBEFPIX_ENCRYPT_SIZE];
     uint8_t their_alias[LIBEFPIX_ALIAS_SIZE];
     static uint8_t anon_alias[LIBEFPIX_ALIAS_SIZE]={0};
     uint8_t signature[64];
-
     crypto_blake2b(hash, LIBEFPIX_HASH_SIZE, packet+1+1, LIBEFPIX_PACKAGE_SIZE);
     crypto_blake2b(pow_hash, LIBEFPIX_HASH_SIZE, packet+1+1, LIBEFPIX_PACKAGE_SIZE+LIBEFPIX_POW_NONCE_SIZE);
     if (!verify_pow(pow_hash)) return false;
@@ -166,4 +164,12 @@ bool LIBEFPIX_decode(uint8_t packet[LIBEFPIX_PACKET_SIZE], LIBEFPIX_Identity ide
         else{recv->unknown=true;}
         return true;
     }
+}
+bool LIBEFPIX_no_recv(uint8_t packet[LIBEFPIX_PACKET_SIZE], bool (*hash_check_and_relay)(uint8_t[LIBEFPIX_HASH_SIZE], uint8_t[LIBEFPIX_PACKET_SIZE])){
+    uint8_t hash[LIBEFPIX_HASH_SIZE], pow_hash[LIBEFPIX_HASH_SIZE];
+    crypto_blake2b(hash, LIBEFPIX_HASH_SIZE, packet+1+1, LIBEFPIX_PACKAGE_SIZE);
+    crypto_blake2b(pow_hash, LIBEFPIX_HASH_SIZE, packet+1+1, LIBEFPIX_PACKAGE_SIZE+LIBEFPIX_POW_NONCE_SIZE);
+    if (!verify_pow(pow_hash)) return false;
+    if (!hash_check_and_relay(hash, packet)) return false;
+    return true;
 }

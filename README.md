@@ -19,8 +19,5 @@ See `src/example.c` for usage and tests
 
 - POSIX-compliant system: Requires getrandom() syscall for secure random number generation.
 
-## Build
-Run make for a standard build. Alternatively, if you have NCT installed, you can use nct build.
-
 ## Warning
 This implementation is experimental and has not undergone a formal security audit. It may be vulnerable to side-channel attacks. Use in production at your own risk.
