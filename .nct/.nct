@@ -1,4 +1,4 @@
 gcc build.c -o .nct/build
 .nct/build
-gcc test.c lib/monocypher.c lib/monocypher-ed25519.c -o .nct/test -Wall -Wextra -Werror -pedantic -O3
+gcc test.c -o .nct/test -lsodium -Wall -Wextra -Werror -pedantic -O3
 .nct/test

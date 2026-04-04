@@ -1,7 +1,6 @@
 //=============================================================
 //EXAMPLE CODE
 //=============================================================
-#include "libefpix_config.h"
 #include "libefpix.h"
 #include <stdlib.h>
 #include <time.h>
@@ -47,13 +46,13 @@ uint32_t get_age(uint8_t recv_time[LIBEFPIX_TIMESTAMP_SIZE], uint8_t send_time[L
 }
 //=============================HELPER FUNCTIONS================================
 void add_test_contact(const char* their_alias_str, uint8_t kx_public_key[32], uint8_t sign_public_key[32], const char* my_alias_str) {
-    if (contact_count < 10) {
+    if (contact_count < CONTACT_STORE_SIZE) {
         memset(contacts[contact_count].their_alias, 0, LIBEFPIX_ALIAS_SIZE);
         memset(contacts[contact_count].my_alias, 0, LIBEFPIX_ALIAS_SIZE);
         strncpy((char*)contacts[contact_count].their_alias, their_alias_str, LIBEFPIX_ALIAS_SIZE - 1);
         strncpy((char*)contacts[contact_count].my_alias, my_alias_str, LIBEFPIX_ALIAS_SIZE - 1);
-        memcpy(contacts[contact_count].kx_public_key, kx_public_key, 32);
-        memcpy(contacts[contact_count].sign_public_key, sign_public_key, 32);
+        memcpy(contacts[contact_count].encrypt_public_key, kx_public_key, LIBEFPIX_ENC_PK_SIZE);
+        memcpy(contacts[contact_count].sign_public_key, sign_public_key, LIBEFPIX_SIGN_PK_SIZE);
         ++contact_count;
     }
 }
@@ -66,22 +65,17 @@ int main() {
     LIBEFPIX_Identity alice, bob;
     LIBEFPIX_generate_identity(&alice);
     LIBEFPIX_generate_identity(&bob);
-    add_test_contact("Alice", alice.kx_public_key, alice.sign_public_key, "Bob");
-    add_test_contact("Bob", bob.kx_public_key, bob.sign_public_key, "Alice");
+    add_test_contact("Alice", alice.encrypt_public_key, alice.sign_public_key, "Bob");
+    add_test_contact("Bob", bob.encrypt_public_key, bob.sign_public_key, "Alice");
     LIBEFPIX_Send send_msg = {0};
-    send_msg.anonymous = false;
-    send_msg.broadcast = false;
-    send_msg.identity = alice;
-    safe_alias_copy(send_msg.my_alias, "Alice");
-    memcpy(send_msg.receiver_kx_public_key, bob.kx_public_key, 32);
-    get_timestamp(send_msg.timestamp);
-    memcpy(send_msg.internal_address, "001", 3);
+    safe_alias_copy(send_msg.alias, "Alice");
+    get_timestamp(send_msg.send_timestamp);
     strncpy((char*)send_msg.message, "Hello Bob, this is Alice!", LIBEFPIX_MESSAGE_SIZE - 1);
     uint8_t packet[LIBEFPIX_PACKET_SIZE];
-    LIBEFPIX_encode(send_msg, packet);
+    LIBEFPIX_encode(&send_msg, &alice, bob.encrypt_public_key, false, false, packet);
     LIBEFPIX_Recv recv_msg = {0};
-    bool decode_result = LIBEFPIX_decode(packet, bob, &recv_msg, hash_check_and_relay, get_contact_from_alias, get_timestamp, get_age);
-    bool pass = (decode_result && !recv_msg.unknown && !recv_msg.broadcast && memcmp(recv_msg.contact.their_alias, send_msg.my_alias, LIBEFPIX_ALIAS_SIZE)==0 && memcmp(recv_msg.message, send_msg.message, LIBEFPIX_MESSAGE_SIZE)==0);
+    bool decode_result = LIBEFPIX_decode(packet, &bob, &recv_msg, hash_check_and_relay, get_contact_from_alias, get_timestamp, get_age);
+    bool pass = (decode_result && !recv_msg.unknown && !recv_msg.broadcast && memcmp(recv_msg.contact.their_alias, send_msg.alias, LIBEFPIX_ALIAS_SIZE)==0 && memcmp(recv_msg.message, send_msg.message, LIBEFPIX_MESSAGE_SIZE)==0);
     printf("Result: %s\n", pass ? "PASS" : "FAIL");
     return 0;
 }
