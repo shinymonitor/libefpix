@@ -1,6 +1,41 @@
-#pragma once
+/*
+A lightweight C implementation of the EFPIX protocol (https://github.com/shinymonitor/EFPIX)
+
+USAGE:
+    #define LIBEFPIX_IMPLEMENTATION  // STB style
+    #include "libefpix.h"
+
+LICENSE:
+    MIT License
+
+    Copyright (c) 2025 Arin Upadhyay
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+*/
+
+
+#ifndef LIBEFPIX_H_
+#define LIBEFPIX_H_
 
 #define LIBEFPIX_VERSION 2
+
+#define LIBEFPIX_DEF static inline
 
 #include <string.h>
 #include <stdbool.h>
@@ -9,10 +44,11 @@
 #define LIBEFPIX_ALIAS_SIZE 16
 #define LIBEFPIX_TIMESTAMP_SIZE 8
 #define LIBEFPIX_MESSAGE_SIZE 256
-#define LIBEFPIX_HASH_SIZE crypto_generichash_BYTES // 32
 #define LIBEFPIX_POW_NONCE_SIZE 8
 #define LIBEFPIX_POW_ZEROS 2
 #define LIBEFPIX_MAX_AGE 1
+
+#define LIBEFPIX_HASH_SIZE crypto_generichash_BYTES // 32
 
 #define LIBEFPIX_ENC_PK_SIZE crypto_box_PUBLICKEYBYTES
 #define LIBEFPIX_ENC_SK_SIZE crypto_box_SECRETKEYBYTES
@@ -67,13 +103,43 @@ typedef struct {
     uint8_t message[LIBEFPIX_MESSAGE_SIZE];
 } LIBEFPIX_Recv;
 
-static inline bool libefpix_verify_pow(const uint8_t *hash) {
+LIBEFPIX_DEF bool libefpix_verify_pow(const uint8_t *hash);
+LIBEFPIX_DEF bool libefpix_pow_and_dedup(
+        uint8_t packet[LIBEFPIX_PACKET_SIZE],
+        uint8_t out_dedup_hash[LIBEFPIX_HASH_SIZE],
+        bool (*hash_check_and_relay)(uint8_t[LIBEFPIX_HASH_SIZE], uint8_t[LIBEFPIX_PACKET_SIZE])
+    );
+LIBEFPIX_DEF void LIBEFPIX_generate_identity(LIBEFPIX_Identity *identity);
+LIBEFPIX_DEF void LIBEFPIX_encode(
+        LIBEFPIX_Send *send,
+        LIBEFPIX_Identity* identity,
+        uint8_t receiver_encrypt_public_key[LIBEFPIX_ENC_PK_SIZE],
+        bool anonymous, bool broadcast,
+        uint8_t packet[LIBEFPIX_PACKET_SIZE]
+    );
+LIBEFPIX_DEF bool LIBEFPIX_decode(
+        uint8_t packet[LIBEFPIX_PACKET_SIZE],
+        LIBEFPIX_Identity* identity,
+        LIBEFPIX_Recv* recv,
+        bool (*hash_check_and_relay)(uint8_t[LIBEFPIX_HASH_SIZE], uint8_t[LIBEFPIX_PACKET_SIZE]),
+        bool (*get_contact_from_alias)(uint8_t[LIBEFPIX_ALIAS_SIZE], LIBEFPIX_Contact*),
+        void (*get_timestamp)(uint8_t[LIBEFPIX_TIMESTAMP_SIZE]),
+        uint32_t (*get_age)(uint8_t[LIBEFPIX_TIMESTAMP_SIZE], uint8_t[LIBEFPIX_TIMESTAMP_SIZE])
+    );
+LIBEFPIX_DEF bool LIBEFPIX_no_recv(
+        uint8_t packet[LIBEFPIX_PACKET_SIZE],
+        bool (*hash_check_and_relay)(uint8_t[LIBEFPIX_HASH_SIZE], uint8_t[LIBEFPIX_PACKET_SIZE])
+    );
+
+#ifdef LIBEFPIX_IMPLEMENTATION
+
+LIBEFPIX_DEF bool libefpix_verify_pow(const uint8_t *hash) {
     for (size_t i = 0; i < LIBEFPIX_POW_ZEROS; ++i)
         if (hash[i] != 0) return false;
     return true;
 }
 
-static inline bool libefpix_pow_and_dedup(
+LIBEFPIX_DEF bool libefpix_pow_and_dedup(
         uint8_t packet[LIBEFPIX_PACKET_SIZE],
         uint8_t out_dedup_hash[LIBEFPIX_HASH_SIZE],
         bool (*hash_check_and_relay)(uint8_t[LIBEFPIX_HASH_SIZE], uint8_t[LIBEFPIX_PACKET_SIZE])
@@ -85,12 +151,12 @@ static inline bool libefpix_pow_and_dedup(
     return hash_check_and_relay(out_dedup_hash, packet);
 }
 
-static inline void LIBEFPIX_generate_identity(LIBEFPIX_Identity *identity) {
+LIBEFPIX_DEF void LIBEFPIX_generate_identity(LIBEFPIX_Identity *identity) {
     crypto_box_keypair(identity->encrypt_public_key, identity->encrypt_secret_key);
     crypto_sign_keypair(identity->sign_public_key,   identity->sign_secret_key);
 }
 
-static inline void LIBEFPIX_encode(
+LIBEFPIX_DEF void LIBEFPIX_encode(
         LIBEFPIX_Send *send,
         LIBEFPIX_Identity* identity,
         uint8_t receiver_encrypt_public_key[LIBEFPIX_ENC_PK_SIZE],
@@ -126,12 +192,11 @@ static inline void LIBEFPIX_encode(
     }
     do {
         randombytes_buf(packet + 2 + LIBEFPIX_SEALED_SIZE, LIBEFPIX_POW_NONCE_SIZE);
-        crypto_generichash(pow_hash, LIBEFPIX_HASH_SIZE,
-            packet + 2, LIBEFPIX_SEALED_SIZE + LIBEFPIX_POW_NONCE_SIZE, NULL, 0);
+        crypto_generichash(pow_hash, LIBEFPIX_HASH_SIZE, packet + 2, LIBEFPIX_SEALED_SIZE + LIBEFPIX_POW_NONCE_SIZE, NULL, 0);
     } while (!libefpix_verify_pow(pow_hash));
 }
 
-static inline bool LIBEFPIX_decode(
+LIBEFPIX_DEF bool LIBEFPIX_decode(
         uint8_t packet[LIBEFPIX_PACKET_SIZE],
         LIBEFPIX_Identity* identity,
         LIBEFPIX_Recv* recv,
@@ -188,7 +253,7 @@ static inline bool LIBEFPIX_decode(
     }
 }
 
-static inline bool LIBEFPIX_no_recv(
+LIBEFPIX_DEF bool LIBEFPIX_no_recv(
         uint8_t packet[LIBEFPIX_PACKET_SIZE],
         bool (*hash_check_and_relay)(uint8_t[LIBEFPIX_HASH_SIZE], uint8_t[LIBEFPIX_PACKET_SIZE])
     ) {
@@ -196,3 +261,7 @@ static inline bool LIBEFPIX_no_recv(
     if (packet[0] != LIBEFPIX_VERSION) return false;
     return libefpix_pow_and_dedup(packet, hash, hash_check_and_relay);
 }
+
+#endif // LIBEFPIX_IMPLEMENTATION
+
+#endif // LIBEFPIX_H_

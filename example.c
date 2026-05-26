@@ -1,6 +1,7 @@
 //=============================================================
 //EXAMPLE CODE
 //=============================================================
+#define LIBEFPIX_IMPLEMENTATION
 #include "libefpix.h"
 #include <stdlib.h>
 #include <time.h>
@@ -20,8 +21,10 @@ void print_hex(uint8_t* data, size_t len) {
 bool hash_check_and_relay(uint8_t hash[LIBEFPIX_HASH_SIZE], uint8_t packet[LIBEFPIX_PACKET_SIZE]) {
     for (size_t i = 0; i < hash_count; i++) if (memcmp(stored_hashes[i], hash, LIBEFPIX_HASH_SIZE) == 0) return false;
     if (hash_count < HASH_STORE_SIZE) {memcpy(stored_hashes[hash_count], hash, LIBEFPIX_HASH_SIZE); hash_count++;}
+    // RELAY CODE HERE
     printf("RELAY: ");
     print_hex(packet, LIBEFPIX_PACKET_SIZE);
+    // RELAY CODE HERE
     return true;
 }
 bool get_contact_from_alias(uint8_t alias[LIBEFPIX_ALIAS_SIZE], LIBEFPIX_Contact* contact) {
@@ -76,6 +79,7 @@ int main() {
     LIBEFPIX_Recv recv_msg = {0};
     bool decode_result = LIBEFPIX_decode(packet, &bob, &recv_msg, hash_check_and_relay, get_contact_from_alias, get_timestamp, get_age);
     bool pass = (decode_result && !recv_msg.unknown && !recv_msg.broadcast && memcmp(recv_msg.contact.their_alias, send_msg.alias, LIBEFPIX_ALIAS_SIZE)==0 && memcmp(recv_msg.message, send_msg.message, LIBEFPIX_MESSAGE_SIZE)==0);
-    printf("Result: %s\n", pass ? "PASS" : "FAIL");
+    printf("%s\n", pass ? "RECEIVED BY BOB" : "FAIL");
+    printf("MESSAGE: %s\n", recv_msg.message);
     return 0;
 }

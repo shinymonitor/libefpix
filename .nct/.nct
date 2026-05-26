@@ -1,4 +1,0 @@
-gcc build.c -o .nct/build
-.nct/build
-gcc test.c -o .nct/test -lsodium -Wall -Wextra -Werror -pedantic -O3
-.nct/test

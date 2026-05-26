@@ -1,7 +1,8 @@
 //=============================================================
 // TEST CODE
 //=============================================================
-#include "src/libefpix.h"
+#define LIBEFPIX_IMPLEMENTATION
+#include "libefpix.h"
 #include <stdio.h>
 #include <time.h>
 #include <stdint.h>
