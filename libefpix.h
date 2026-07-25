@@ -26,10 +26,10 @@
 #define LIBEFPIX_VL_SEAL_OVERHEAD crypto_box_SEALBYTES
 
 typedef enum {
-	LIBEFPIX_PT_SUC = 0,
-	LIBEFPIX_PT_AUC,
-	LIBEFPIX_PT_SBC,
-	LIBEFPIX_PT_ABC,
+    LIBEFPIX_PT_SUC = 0,
+    LIBEFPIX_PT_AUC,
+    LIBEFPIX_PT_SBC,
+    LIBEFPIX_PT_ABC,
 } LIBEFPIX_PacketType;
 
 #define LIBEFPIX_PT_HEADER_SIZE 2
@@ -94,7 +94,7 @@ LIBEFPIX_DEF bool LIBEFPIX__check_and_relay(
 LIBEFPIX_DEF bool LIBEFPIX_init();
 LIBEFPIX_DEF void LIBEFPIX_generate_identity(LIBEFPIX_Identity* identity);
 LIBEFPIX_DEF bool LIBEFPIX_create_packet(
-		LIBEFPIX_Send* send,
+        LIBEFPIX_Send* send,
         LIBEFPIX_Identity* my_identity,
         uint8_t packet[LIBEFPIX_PACKET_SIZE],
         bool (*relay)(uint8_t[LIBEFPIX_PACKET_SIZE])
@@ -170,7 +170,7 @@ LIBEFPIX_DEF bool LIBEFPIX__verify_pow(uint8_t* hash, uint8_t pow_zeros) {
 }
 
 LIBEFPIX_DEF bool LIBEFPIX__check_and_relay(
-		uint8_t pow_zeros,
+        uint8_t pow_zeros,
         uint8_t packet[LIBEFPIX_PACKET_SIZE],
         bool (*relay)(uint8_t[LIBEFPIX_PACKET_SIZE])
     ) {
@@ -185,7 +185,7 @@ LIBEFPIX_DEF bool LIBEFPIX__check_and_relay(
 }
 
 LIBEFPIX_DEF bool LIBEFPIX_init(){
-	return (sodium_init() >= 0);
+    return (sodium_init() >= 0);
 }
 LIBEFPIX_DEF void LIBEFPIX_generate_identity(LIBEFPIX_Identity* identity) {
     crypto_box_keypair(identity->encrypt_pk, identity->encrypt_sk);
@@ -193,7 +193,7 @@ LIBEFPIX_DEF void LIBEFPIX_generate_identity(LIBEFPIX_Identity* identity) {
 }
 
 LIBEFPIX_DEF bool LIBEFPIX_create_packet(
-		LIBEFPIX_Send* send,
+        LIBEFPIX_Send* send,
         LIBEFPIX_Identity* my_identity,
         uint8_t packet[LIBEFPIX_PACKET_SIZE],
         bool (*relay)(uint8_t[LIBEFPIX_PACKET_SIZE])
@@ -213,9 +213,9 @@ LIBEFPIX_DEF bool LIBEFPIX_create_packet(
         crypto_box_seal(packet + LIBEFPIX_UC_SEALED_OFF, payload, LIBEFPIX_UC_PAYLOAD_SIZE, contact.encrypt_pk);
     }
     else if (send->packet_type == LIBEFPIX_PT_SBC || send->packet_type == LIBEFPIX_PT_ABC) {
-    	LIBEFPIX_Contact contact = {0};
-    	if (!LIBEFPIX__get_contact_from_alias(send->recv_alias, &contact)) return false;
-    	if (send->packet_type == LIBEFPIX_PT_SBC) memcpy(packet + LIBEFPIX_BC_ALIAS_OFF, contact.my_alias, LIBEFPIX_CFG_ALIAS_SIZE);
+        LIBEFPIX_Contact contact = {0};
+        if (!LIBEFPIX__get_contact_from_alias(send->recv_alias, &contact)) return false;
+        if (send->packet_type == LIBEFPIX_PT_SBC) memcpy(packet + LIBEFPIX_BC_ALIAS_OFF, contact.my_alias, LIBEFPIX_CFG_ALIAS_SIZE);
         else memset(packet + LIBEFPIX_BC_ALIAS_OFF, 0, LIBEFPIX_CFG_ALIAS_SIZE);
         LIBEFPIX__get_timestamp(packet + LIBEFPIX_BC_TIMESTAMP_OFF);
         memcpy(packet + LIBEFPIX_BC_MESSAGE_OFF, send->message, LIBEFPIX_CFG_MESSAGE_SIZE);
